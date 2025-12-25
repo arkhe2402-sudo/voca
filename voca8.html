@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>워드 2000</title>
+    <title>워드마스터 2000 - 스마트 학습 매니저</title>
     <style>
         body { font-family: 'Pretendard', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px 0; }
         .container { background: white; padding: 1.5rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 450px; text-align: center; position: relative; box-sizing: border-box; }
         .hidden { display: none; }
         h1 { color: #1a73e8; font-size: 1.4rem; margin-bottom: 1rem; }
+        
         .dashboard { background: #e8f0fe; padding: 12px; border-radius: 10px; margin-bottom: 15px; text-align: left; }
         .report-area { text-align: left; background: #fffde7; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.75rem; border: 1px solid #fff9c4; min-height: 20px; color: #f57f17; }
+        
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         button { padding: 10px; border: 1px solid #dadce0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.9rem; font-weight: bold; height: 60px; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-sizing: border-box; }
         
-        /* 퀴즈 정답/오답 색상 */
+        /* 퀴즈 정답/오답 버튼 색상 */
         button.correct-choice { background-color: #4caf50 !important; color: white !important; border-color: #388e3c !important; }
         button.wrong-choice { background-color: #f44336 !important; color: white !important; border-color: #d32f2f !important; }
 
@@ -30,7 +32,7 @@
         .calendar-day.studied::after { content: '🔥'; position: absolute; top: -4px; right: -2px; font-size: 0.5rem; }
         .weekday { font-weight: bold; color: #aaa; font-size: 0.7rem; }
 
-        .word-display { font-size: 2.8rem; font-weight: bold; margin: 15px 0; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        .word-display { font-size: 2.8rem; font-weight: bold; margin: 15px 0; min-height: 80px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .options { display: grid; gap: 8px; }
         .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; background: white; border-radius: 8px; margin-bottom: 5px; }
         
@@ -46,7 +48,7 @@
 <div id="setup-view" class="container">
     <h1>Word Master 2000</h1>
     <div class="dashboard">
-        <div style="font-size:0.85rem; font-weight:bold;">진도: <span id="learned-stat">0 / 0</span></div>
+        <div style="font-size:0.85rem; font-weight:bold;">진도: <span id="learned-stat">0 / 2000</span></div>
         <div id="last-record" style="font-size:0.7rem; color:#666;">마지막: 없음</div>
     </div>
     <div class="report-area" id="unlearned-segments">데이터 로드 중...</div>
@@ -61,7 +63,7 @@
         <button class="btn-wrong-view" onclick="openWrongStorage()">오답 보관함</button>
     </div>
     <div class="calendar-container">
-        <div style="font-size:0.85rem; font-weight:bold;" id="calendar-month">2024년 1월</div>
+        <div style="font-size:0.85rem; font-weight:bold;" id="calendar-month">2025년 12월</div>
         <div class="calendar-grid" id="calendar-grid"></div>
     </div>
 </div>
@@ -69,7 +71,7 @@
 <div id="list-view" class="container hidden">
     <h1 id="list-title">단어장</h1>
     <div id="list-content" style="text-align: left; background: #f8f9fa; padding: 10px; border-radius: 10px; max-height: 400px; overflow-y: auto;"></div>
-    <button onclick="location.reload()" style="margin-top:15px; width:100%; height:50px; background:#eee; border:none;">메인으로 돌아가기</button>
+    <button onclick="location.reload()" style="margin-top:15px; width:100%; height:50px; background:#eee; border:none; border-radius: 8px;">메인으로 돌아가기</button>
 </div>
 
 <div id="quiz-view" class="container hidden">
@@ -82,6 +84,7 @@
 </div>
 
 <script>
+    // [중요] 여기에 2000단어 데이터를 붙여넣으세요.
     const rawData = `1,provide,"[동] 제공하다, 공급하다, 준비하다"
 2,develop,"[동] 개발하다, 발달하다, 발전시키다"
 3,service,"[명] 서비스, 근무, 봉사, 공공 업무"
@@ -2242,7 +2245,8 @@
 1997,infrastructure,"[명] (사회) 기반 시설, 하부 조직"
 "1998,wound,""[동] 상처를 입히다, 부상하게 하다
 [명] 부상, 상처"""
-1999,discrete,"[형] 별개의"`; 
+1999,discrete,"[형] 별개의
+2000, fluctuation, [명] 변동, 동요"`; 
 
     let allWords = [], currentQuizList = [], currentIndex = 0, currentWordObj = null, isMuted = false, isProcessing = false;
 
@@ -2262,7 +2266,7 @@
         } catch(e) { console.error(e); }
     }
 
-    // --- 퀴즈 로직 (버튼 색상 변경 방식) ---
+    // --- 퀴즈 로직 ---
     function nextQuestion() {
         if (currentIndex >= currentQuizList.length) { alert("학습 완료!"); location.reload(); return; }
         
@@ -2298,32 +2302,34 @@
         const isCorrect = (selected === currentWordObj.meaning);
         const icon = document.getElementById('feedback-icon');
         
-        // 피드백 아이콘 표시
         icon.innerText = isCorrect ? "O" : "X";
         icon.className = isCorrect ? "o-mark" : "x-mark";
         icon.style.opacity = "1";
 
-        // 버튼 색상 변경
         const allButtons = document.querySelectorAll('#options-container button');
         allButtons.forEach(btn => {
             if(btn.innerText === currentWordObj.meaning) {
-                btn.classList.add('correct-choice'); // 무조건 정답은 초록색
+                btn.classList.add('correct-choice'); 
             } else if(btn === targetBtn && !isCorrect) {
-                btn.classList.add('wrong-choice'); // 틀린걸 눌렀다면 그것만 빨간색
+                btn.classList.add('wrong-choice'); 
             }
         });
 
-        if(isCorrect) saveProgress(currentWordObj.id);
-        else saveWrong(currentWordObj);
+        // 맞혀도 보관함에서 삭제하지 않는 로직 (학습 진도에만 기록)
+        if(isCorrect) {
+            saveProgress(currentWordObj.id);
+        } else {
+            saveWrong(currentWordObj);
+        }
 
         setTimeout(() => {
             icon.style.opacity = "0";
             currentIndex++;
             nextQuestion();
-        }, isCorrect ? 500 : 1200); // 틀렸을 때 더 길게 확인하도록 함
+        }, isCorrect ? 500 : 1200);
     }
 
-    // --- 오답 보관함 및 삭제 버튼 ---
+    // --- 오답 보관함 관리 ---
     function openWrongStorage() {
         showView('list-view');
         document.getElementById('list-title').innerText = "오답 보관함";
@@ -2333,14 +2339,14 @@
     function renderWrongList() {
         const list = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]');
         const content = document.getElementById('list-content');
-        if(list.length === 0) { content.innerHTML = "<p style='text-align:center;'>비어있습니다.</p>"; return; }
+        if(list.length === 0) { content.innerHTML = "<p style='text-align:center;'>보관함이 비어있습니다.</p>"; return; }
         
         content.innerHTML = list.map(w => `
             <div class="item-row">
                 <div style="flex:1" onclick="playTTS('${w.word}')">
                     <b>${w.word}</b><br><small>${w.meaning}</small>
                 </div>
-                <button onclick="deleteWrong(${w.id})" style="width:50px; height:35px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; font-size:0.7rem; border-radius:5px;">삭제</button>
+                <button onclick="deleteWrong(${w.id})" style="width:55px; height:35px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; font-size:0.75rem; border-radius:5px;">삭제</button>
             </div>
         `).join('');
     }
@@ -2353,17 +2359,22 @@
         updateDashboard();
     }
 
-    // --- 공통 유틸리티 ---
+    // --- 유틸리티 및 데이터 저장 ---
     function saveProgress(id) {
         let learned = JSON.parse(localStorage.getItem('learnedIds') || '[]');
         if(!learned.includes(id)) learned.push(id);
         localStorage.setItem('learnedIds', JSON.stringify(learned));
         localStorage.setItem('lastLearnedId', id);
     }
+
     function saveWrong(word) {
         let list = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]');
-        if(!list.find(w => w.id === word.id)) { list.push(word); localStorage.setItem('cumulativeWrongWords', JSON.stringify(list)); }
+        if(!list.find(w => w.id === word.id)) { 
+            list.push(word); 
+            localStorage.setItem('cumulativeWrongWords', JSON.stringify(list)); 
+        }
     }
+
     function updateDashboard() {
         const learned = JSON.parse(localStorage.getItem('learnedIds') || '[]');
         const wrong = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]');
@@ -2371,6 +2382,7 @@
         document.getElementById('wrong-count1').innerText = wrong.length;
         document.getElementById('last-record').innerText = "마지막: " + (localStorage.getItem('lastLearnedId') || "없음") + "번";
     }
+
     function renderFullCalendar() {
         const grid = document.getElementById('calendar-grid');
         const now = new Date();
@@ -2386,12 +2398,14 @@
             grid.innerHTML += `<div class="calendar-day ${log.includes(dStr) ? 'studied' : ''}">${d}</div>`;
         }
     }
+
     function recordStudyDate() {
         const d = new Date();
         const dStr = `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
         let log = JSON.parse(localStorage.getItem('studyLog') || '[]');
         if (!log.includes(dStr)) { log.push(dStr); localStorage.setItem('studyLog', JSON.stringify(log)); }
     }
+
     function renderUnlearnedReport() {
         const learned = new Set(JSON.parse(localStorage.getItem('learnedIds') || '[]'));
         let segments = [], start = null;
@@ -2400,8 +2414,9 @@
             else if (start !== null) { segments.push(start === i-1 ? start : `${start}~${i-1}`); start = null; }
         }
         if (start !== null) segments.push(`${start}~2000`);
-        document.getElementById('unlearned-segments').innerText = "미학습: " + (segments.join(', ') || "완료!");
+        document.getElementById('unlearned-segments').innerText = "미학습 구간: " + (segments.join(', ') || "모두 완료!");
     }
+
     function prepareQuiz(mode) {
         if (mode === 'range') {
             const s = parseInt(document.getElementById('start-num').value), e = parseInt(document.getElementById('end-num').value);
@@ -2417,6 +2432,7 @@
         showView('quiz-view');
         nextQuestion();
     }
+
     function playTTS(text) {
         if(isMuted) return;
         window.speechSynthesis.cancel();
@@ -2424,6 +2440,7 @@
         msg.lang = 'en-US';
         window.speechSynthesis.speak(msg);
     }
+
     function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊"; }
     function showView(id) { document.querySelectorAll('.container').forEach(c => c.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
     function manualAddToWrong() { saveWrong(currentWordObj); document.getElementById('manual-add-btn').innerText = "✅ 추가됨"; }
