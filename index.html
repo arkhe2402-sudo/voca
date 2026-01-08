@@ -15,7 +15,6 @@
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         button { padding: 10px; border: 1px solid #dadce0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: 0.2s; }
         
-        /* 4지선다 보기 버튼 */
         .options { display: grid; gap: 10px; margin-top: 15px; }
         .option-btn { padding: 15px; border: 2px solid #ddd; border-radius: 10px; background: white; cursor: pointer; font-size: 1rem; text-align: center; }
         .option-btn.correct-choice { background-color: #4caf50 !important; color: white !important; border-color: #388e3c !important; }
@@ -2242,7 +2241,7 @@
 1999,discrete,"[형] 별개의
 2000, fluctuation, [명] 변동, 동요"`;
 
-  let allWords = [], currentQuizList = [], currentIndex = 0, currentWordObj = null;
+ let allWords = [], currentQuizList = [], currentIndex = 0, currentWordObj = null;
     let sessionResults = [], isProcessing = false, isSoundOn = true;
 
     window.onload = init;
@@ -2305,19 +2304,26 @@
     }
 
     function prepareQuiz(mode) {
-        // 음성 엔진 활성화
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+        // 모바일 사운드 엔진 활성화
+        if (window.speechSynthesis) {
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+        }
 
         sessionResults = [];
         if (mode === 'range') {
             const s = parseInt(document.getElementById('start-num').value);
             const e = parseInt(document.getElementById('end-num').value);
-            if (!s || !e || s > e) return alert("범위를 확인하세요.");
+            if (isNaN(s) || isNaN(e) || s > e) return alert("범위를 확인하세요.");
             currentQuizList = allWords.filter(w => w.id >= s && w.id <= e);
         } else {
             currentQuizList = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]');
         }
+
         if (currentQuizList.length === 0) return alert("단어가 없습니다.");
+        
+        // 입력창 포커스 해제 (모바일 렉 방지)
+        document.getElementById('start-num').blur();
+        document.getElementById('end-num').blur();
         
         const now = new Date();
         const today = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
@@ -2337,9 +2343,8 @@
         document.getElementById('progress-text').innerText = `${currentIndex + 1} / ${currentQuizList.length}`;
         document.getElementById('current-word').innerText = currentWordObj.word;
         
-        setTimeout(() => speakWord(), 200);
+        setTimeout(() => speakWord(), 100);
 
-        // 4지선다 보기 생성 로직
         const opts = [currentWordObj.meaning];
         while(opts.length < 4) {
             const randomWord = allWords[Math.floor(Math.random()*allWords.length)];
@@ -2419,7 +2424,7 @@
         const content = document.getElementById('list-content');
         if(mode === 'wrong') {
             const list = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]');
-            content.innerHTML = list.map(w => `<div class="item-row"><div><b>${w.word}</b><br>${w.meaning}</div><button onclick="deleteWrong(${w.id}, this)">삭제</button></div>`).join('');
+            content.innerHTML = list.length ? list.map(w => `<div class="item-row"><div><b>${w.word}</b><br>${w.meaning}</div><button onclick="deleteWrong(${w.id}, this)">삭제</button></div>`).join('') : "비어있음";
         } else {
             content.innerHTML = allWords.map(w => `<div class="item-row"><b>${w.id}. ${w.word}</b><br>${w.meaning}</div>`).join('');
         }
