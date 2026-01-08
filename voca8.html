@@ -16,7 +16,6 @@
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
         button { padding: 10px; border: 1px solid #dadce0; border-radius: 8px; background: white; cursor: pointer; font-size: 0.9rem; font-weight: bold; height: 60px; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-sizing: border-box; }
         
-        /* 퀴즈 정답/오답 버튼 색상 */
         button.correct-choice { background-color: #4caf50 !important; color: white !important; border-color: #388e3c !important; }
         button.wrong-choice { background-color: #f44336 !important; color: white !important; border-color: #d32f2f !important; }
 
@@ -36,6 +35,12 @@
         .options { display: grid; gap: 8px; }
         .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; background: white; border-radius: 8px; margin-bottom: 5px; }
         
+        /* 결과 화면 전용 스타일 */
+        .result-section { text-align: left; margin-top: 15px; }
+        .result-label { font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; display: block; }
+        .correct-text { color: #2e7d32; }
+        .wrong-text { color: #d32f2f; }
+
         #feedback-icon { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 6rem; font-weight: bold; z-index: 100; opacity: 0; pointer-events: none; }
         .o-mark { color: rgba(76, 175, 80, 0.7); }
         .x-mark { color: rgba(244, 67, 54, 0.7); }
@@ -63,7 +68,7 @@
         <button class="btn-wrong-view" onclick="openWrongStorage()">오답 보관함</button>
     </div>
     <div class="calendar-container">
-        <div style="font-size:0.85rem; font-weight:bold;" id="calendar-month">2025년 12월</div>
+        <div style="font-size:0.85rem; font-weight:bold;" id="calendar-month">2026년 1월</div>
         <div class="calendar-grid" id="calendar-grid"></div>
     </div>
 </div>
@@ -78,13 +83,19 @@
     <button onclick="toggleMute()" id="mute-btn" style="position:absolute; top:15px; right:15px; width:40px; height:40px; border-radius:50%; border:none; background:#eee;">🔊</button>
     <div id="progress-text" style="font-size:0.8rem; color:#999; margin-top:10px;"></div>
     <div class="word-display" id="current-word" onclick="playTTS()">Word</div>
-    <button onclick="manualAddToWrong()" id="manual-add-btn" style="width:auto; height:35px; padding:0 15px; border-radius:20px; font-size:0.8rem; border:1px dashed #ffb74d; color:#e65100; margin-bottom:15px; background:#fff3e0;">⚠️ 헷갈려요</button>
+    <button onclick="manualAddToWrong()" id="manual-add-btn" style="width:auto; height:35px; padding:0 15px; border-radius:20px; font-size:0.8rem; border:1px dashed #ffb74d; color:#e65100; margin-bottom:15px; background:#fff3e0;"⚠️ 헷갈려요</button>
     <div class="options" id="options-container"></div>
     <button onclick="location.reload()" style="margin-top:25px; border:none; color:#999; text-decoration:underline; background:none; width:100%;">공부 중단하고 나가기</button>
 </div>
 
+<div id="result-view" class="container hidden">
+    <h1>학습 결과</h1>
+    <div id="result-content" style="text-align: left; max-height: 450px; overflow-y: auto; padding: 5px;">
+        </div>
+    <button onclick="location.reload()" style="margin-top:15px; width:100%; height:50px; background:#1a73e8; color:white; border:none; border-radius: 8px;">확인 완료 (메인으로)</button>
+</div>
+
 <script>
-    // [중요] 여기에 2000단어 데이터를 붙여넣으세요.
     const rawData = `1,provide,"[동] 제공하다, 공급하다, 준비하다"
 2,develop,"[동] 개발하다, 발달하다, 발전시키다"
 3,service,"[명] 서비스, 근무, 봉사, 공공 업무"
@@ -2246,9 +2257,10 @@
 "1998,wound,""[동] 상처를 입히다, 부상하게 하다
 [명] 부상, 상처"""
 1999,discrete,"[형] 별개의
-2000, fluctuation, [명] 변동, 동요"`; 
+2000, fluctuation, [명] 변동, 동요"`;
 
     let allWords = [], currentQuizList = [], currentIndex = 0, currentWordObj = null, isMuted = false, isProcessing = false;
+    let sessionCorrect = [], sessionWrong = []; // 이번 세션 결과 저장
 
     window.onload = function() { init(); };
 
@@ -2266,9 +2278,11 @@
         } catch(e) { console.error(e); }
     }
 
-    // --- 퀴즈 로직 ---
     function nextQuestion() {
-        if (currentIndex >= currentQuizList.length) { alert("학습 완료!"); location.reload(); return; }
+        if (currentIndex >= currentQuizList.length) { 
+            showFinalResult(); // 퀴즈 종료 시 결과 화면 호출
+            return; 
+        }
         
         isProcessing = false;
         currentWordObj = currentQuizList[currentIndex];
@@ -2308,18 +2322,16 @@
 
         const allButtons = document.querySelectorAll('#options-container button');
         allButtons.forEach(btn => {
-            if(btn.innerText === currentWordObj.meaning) {
-                btn.classList.add('correct-choice'); 
-            } else if(btn === targetBtn && !isCorrect) {
-                btn.classList.add('wrong-choice'); 
-            }
+            if(btn.innerText === currentWordObj.meaning) btn.classList.add('correct-choice'); 
+            else if(btn === targetBtn && !isCorrect) btn.classList.add('wrong-choice'); 
         });
 
-        // 맞혀도 보관함에서 삭제하지 않는 로직 (학습 진도에만 기록)
         if(isCorrect) {
             saveProgress(currentWordObj.id);
+            sessionCorrect.push(currentWordObj);
         } else {
             saveWrong(currentWordObj);
+            sessionWrong.push(currentWordObj);
         }
 
         setTimeout(() => {
@@ -2329,7 +2341,48 @@
         }, isCorrect ? 500 : 1200);
     }
 
-    // --- 오답 보관함 관리 ---
+    // --- 최종 결과 화면 렌더링 ---
+    function showFinalResult() {
+        showView('result-view');
+        const container = document.getElementById('result-content');
+        
+        let html = '';
+        
+        if(sessionWrong.length > 0) {
+            html += `<span class="result-label wrong-text">❌ 틀린 단어 (오답 보관함에 유지됨)</span>`;
+            sessionWrong.forEach(w => {
+                html += `
+                <div class="item-row">
+                    <div style="font-size:0.85rem"><b>${w.word}</b><br><small>${w.meaning}</small></div>
+                    <button onclick="deleteWrongFromResult(${w.id}, this)" class="delete-btn" style="width:50px; height:30px; font-size:0.7rem; background:#fff; color:#d32f2f; border:1px solid #d32f2f;">삭제</button>
+                </div>`;
+            });
+        }
+
+        if(sessionCorrect.length > 0) {
+            html += `<br><span class="result-label correct-text">✅ 맞춘 단어 (목록에서 지우려면 클릭)</span>`;
+            sessionCorrect.forEach(w => {
+                const isStillInWrong = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]').some(ww => ww.id === w.id);
+                html += `
+                <div class="item-row" style="background:#f1f8e9">
+                    <div style="font-size:0.85rem"><b>${w.word}</b><br><small>${w.meaning}</small></div>
+                    ${isStillInWrong ? `<button onclick="deleteWrongFromResult(${w.id}, this)" style="width:50px; height:30px; font-size:0.7rem; background:#fff; color:#2e7d32; border:1px solid #2e7d32;">삭제</button>` : ''}
+                </div>`;
+            });
+        }
+
+        container.innerHTML = html || "<p>학습 데이터가 없습니다.</p>";
+    }
+
+    // 결과 화면에서 즉시 오답 삭제
+    function deleteWrongFromResult(id, btn) {
+        deleteWrong(id);
+        btn.innerText = "삭제됨";
+        btn.style.opacity = "0.5";
+        btn.disabled = true;
+    }
+
+    // --- 기존 유틸리티 유지 ---
     function openWrongStorage() {
         showView('list-view');
         document.getElementById('list-title').innerText = "오답 보관함";
@@ -2340,26 +2393,20 @@
         const list = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]');
         const content = document.getElementById('list-content');
         if(list.length === 0) { content.innerHTML = "<p style='text-align:center;'>보관함이 비어있습니다.</p>"; return; }
-        
         content.innerHTML = list.map(w => `
             <div class="item-row">
-                <div style="flex:1" onclick="playTTS('${w.word}')">
-                    <b>${w.word}</b><br><small>${w.meaning}</small>
-                </div>
-                <button onclick="deleteWrong(${w.id})" style="width:55px; height:35px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; font-size:0.75rem; border-radius:5px;">삭제</button>
-            </div>
-        `).join('');
+                <div style="flex:1" onclick="playTTS('${w.word}')"><b>${w.word}</b><br><small>${w.meaning}</small></div>
+                <button onclick="deleteWrong(${w.id}); renderWrongList();" style="width:55px; height:35px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; font-size:0.75rem; border-radius:5px;">삭제</button>
+            </div>`).join('');
     }
 
     function deleteWrong(id) {
         let list = JSON.parse(localStorage.getItem('cumulativeWrongWords') || '[]');
         list = list.filter(w => w.id !== id);
         localStorage.setItem('cumulativeWrongWords', JSON.stringify(list));
-        renderWrongList();
         updateDashboard();
     }
 
-    // --- 유틸리티 및 데이터 저장 ---
     function saveProgress(id) {
         let learned = JSON.parse(localStorage.getItem('learnedIds') || '[]');
         if(!learned.includes(id)) learned.push(id);
@@ -2418,6 +2465,7 @@
     }
 
     function prepareQuiz(mode) {
+        sessionCorrect = []; sessionWrong = []; // 세션 초기화
         if (mode === 'range') {
             const s = parseInt(document.getElementById('start-num').value), e = parseInt(document.getElementById('end-num').value);
             if (!s || !e) { alert("범위를 입력하세요."); return; }
